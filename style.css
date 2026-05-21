@@ -394,7 +394,6 @@ html, body {
    ============================================================ */
 .receipt {
   width: 794px;
-  min-height: 1123px;
   background: #ffffff;
   padding: 60px 56px;
   box-shadow: 0 2px 20px rgba(0,0,0,0.08);
