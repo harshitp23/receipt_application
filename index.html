@@ -8,13 +8,32 @@
 </head>
 <body>
 
-<div class="app">
+<!-- ============ AUTH GATE ============ -->
+<div id="authGate" class="auth-gate">
+  <div class="auth-card">
+    <h1>OurKids Receipt Generator</h1>
+    <p>Sign in with your school's Google account to continue.</p>
+    <button id="signInBtn" class="btn-google">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+      Sign in with Google
+    </button>
+    <p id="authError" class="auth-error" style="display:none;"></p>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="appRoot" class="app" style="display:none;">
 
   <!-- ============ FORM PANEL ============ -->
   <div class="form-panel">
     <div class="form-header">
-      <h1>Receipt Generator</h1>
-      <p>Fill in the details below — the preview updates live.</p>
+      <div class="form-header-top">
+        <h1>Receipt Generator</h1>
+        <button id="signOutBtn" class="btn-icon" title="Sign out">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+      <p id="userBadge" class="user-badge"></p>
     </div>
 
     <div class="form-section">
@@ -30,13 +49,15 @@
       </div>
 
       <div class="form-field">
-        <label for="parentName">Parent's name</label>
-        <input type="text" id="parentName" placeholder="e.g. Rakesh R S">
+        <label for="parentSelect">Parent's name</label>
+        <select id="parentSelect">
+          <option value="" disabled selected>Loading parents...</option>
+        </select>
       </div>
 
       <div class="form-field">
         <label for="childName">Child's name</label>
-        <input type="text" id="childName" placeholder="e.g. Dhrithi Rakesh">
+        <input type="text" id="childName" placeholder="Auto-filled when parent selected" readonly>
       </div>
     </div>
 
@@ -46,13 +67,26 @@
         <button type="button" class="btn-link" id="addItemBtn">+ Add item</button>
       </div>
       <div id="itemsContainer"></div>
+      <p id="itemsEmpty" class="empty-hint">Click "+ Add item" to add a fee.</p>
     </div>
 
     <div class="form-actions">
       <button type="button" class="btn-primary" id="downloadBtn">
         <span class="btn-label">Download PDF</span>
       </button>
-      <button type="button" class="btn-secondary" id="resetBtn">Reset</button>
+      <button type="button" class="btn-secondary" id="resetBtn">New</button>
+    </div>
+
+    <div class="form-section">
+      <button type="button" class="btn-secondary btn-full" id="pastReceiptsBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Past receipts
+      </button>
+    </div>
+
+    <div id="editingBanner" class="editing-banner" style="display:none;">
+      <strong>Editing</strong> <span id="editingReceiptNo"></span>
+      <button type="button" id="cancelEditBtn" class="btn-link">Cancel</button>
     </div>
   </div>
 
@@ -63,7 +97,6 @@
     </div>
 
     <div class="preview-scroll">
-      <!-- This is the actual receipt that gets rendered to PDF -->
       <div id="receipt" class="receipt">
 
         <div class="r-title-bar">
@@ -88,7 +121,7 @@
 
         <div class="r-recipient-row">
           <div class="r-card">
-            <div class="r-label">Received from</div>
+            <div class="r-label">Parent's name</div>
             <div class="r-value" id="rParentName">—</div>
           </div>
           <div class="r-card">
@@ -134,8 +167,8 @@
           <div class="r-footer-right">
             <div class="r-sig-for">For OurKids Preschool &amp; Daycare</div>
             <div class="r-sig-visual">
-              <img src="assets/stamp.png" alt="Stamp" class="r-stamp-img" id="stampImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
-              <img src="assets/signature.png" alt="Signature" class="r-signature-img" id="signatureImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
+              <img src="assets/stamp.png" alt="Stamp" class="r-stamp-img" id="stampImg" onerror="this.style.opacity='0'">
+              <img src="assets/signature.png" alt="Signature" class="r-signature-img" id="signatureImg" onerror="this.style.opacity='0'">
             </div>
             <div class="r-sig-line">Authorized signatory</div>
           </div>
@@ -151,135 +184,66 @@
 
 </div>
 
-<!-- Libraries (loaded from CDN, no build step needed) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="config.js"></script>
-<script src="app.js"></script>
-
-</body>
-</html>      <div class="form-field">
-        <label for="childName">Child's name</label>
-        <input type="text" id="childName" placeholder="e.g. Dhrithi Rakesh">
-      </div>
+<!-- ============ MODAL: ADD NEW PARENT ============ -->
+<div id="newParentModal" class="modal" style="display:none;">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Add new parent</h2>
+      <button class="modal-close" data-close>×</button>
     </div>
-
-    <div class="form-section">
-      <div class="section-head">
-        <h2>Line items</h2>
-        <button type="button" class="btn-link" id="addItemBtn">+ Add item</button>
+    <div class="modal-body">
+      <div class="form-field">
+        <label for="newParentName">Parent's name</label>
+        <input type="text" id="newParentName" placeholder="e.g. Rakesh R S">
       </div>
-      <div id="itemsContainer"></div>
+      <div class="form-field">
+        <label for="newChildName">Child's name</label>
+        <input type="text" id="newChildName" placeholder="e.g. Dhrithi Rakesh">
+      </div>
+      <p id="newParentError" class="form-error" style="display:none;"></p>
     </div>
-
-    <div class="form-actions">
-      <button type="button" class="btn-primary" id="downloadBtn">
-        <span class="btn-label">Download PDF</span>
-      </button>
-      <button type="button" class="btn-secondary" id="resetBtn">Reset</button>
+    <div class="modal-foot">
+      <button class="btn-secondary" data-close>Cancel</button>
+      <button class="btn-primary" id="saveNewParentBtn">Save parent</button>
     </div>
   </div>
-
-  <!-- ============ PREVIEW PANEL ============ -->
-  <div class="preview-panel">
-    <div class="preview-toolbar">
-      <span class="preview-label">Live preview</span>
-    </div>
-
-    <div class="preview-scroll">
-      <!-- This is the actual receipt that gets rendered to PDF -->
-      <div id="receipt" class="receipt">
-
-        <div class="r-header">
-          <div class="r-brand">
-            <div class="r-logo">
-              <img src="assets/logo.png" alt="OurKids logo" id="brandLogo" onerror="this.style.display='none'">
-            </div>
-            <div>
-              <div class="r-brand-name">OurKids</div>
-              <div class="r-brand-tag">DAYCARE · PRESCHOOL · ACTIVITY CLUB</div>
-            </div>
-          </div>
-          <div class="r-meta">
-            <div class="r-meta-row">Receipt no. <strong id="rReceiptNo">2026-5013</strong></div>
-            <div class="r-meta-row">Date <strong id="rReceiptDate">1 May 2026</strong></div>
-          </div>
-        </div>
-
-        <div class="r-title-bar">
-          <div class="r-title">Fee receipt</div>
-        </div>
-
-        <div class="r-recipient-row">
-          <div class="r-card">
-            <div class="r-label">Received from</div>
-            <div class="r-value" id="rParentName">—</div>
-          </div>
-          <div class="r-card">
-            <div class="r-label">Child's name</div>
-            <div class="r-value" id="rChildName">—</div>
-          </div>
-        </div>
-
-        <table class="r-items">
-          <thead>
-            <tr>
-              <th class="sno">#</th>
-              <th>Description</th>
-              <th class="amt">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody id="rItemsBody"></tbody>
-          <tfoot>
-            <tr class="r-total">
-              <td colspan="2" class="lbl">Total</td>
-              <td class="val" id="rTotal">₹ 0</td>
-            </tr>
-          </tfoot>
-        </table>
-
-        <div class="r-words">
-          <strong>Amount in words:</strong> <span id="rWords">—</span>
-        </div>
-
-        <div class="r-footer">
-          <div class="r-footer-left">
-            <div class="r-footer-label">Bank details for payment</div>
-            <table class="r-bank">
-              <tr><td class="k">Bank</td><td id="bankName">—</td></tr>
-              <tr><td class="k">Account holder</td><td id="bankHolder">—</td></tr>
-              <tr><td class="k">A/c no.</td><td id="bankAccount">—</td></tr>
-              <tr><td class="k">IFSC</td><td id="bankIFSC">—</td></tr>
-              <tr><td class="k">PAN</td><td id="bankPAN">—</td></tr>
-              <tr><td class="k" style="vertical-align: top;">Address</td><td id="bankAddress">—</td></tr>
-            </table>
-          </div>
-
-          <div class="r-footer-right">
-            <div class="r-sig-for">For OurKids Preschool &amp; Daycare</div>
-            <div class="r-sig-visual">
-              <img src="assets/stamp.png" alt="Stamp" class="r-stamp-img" id="stampImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
-              <img src="assets/signature.png" alt="Signature" class="r-signature-img" id="signatureImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
-            </div>
-            <div class="r-sig-line">Authorized signatory</div>
-          </div>
-        </div>
-
-        <div class="r-footnote">
-          This is a computer-generated receipt · Thank you for choosing OurKids
-        </div>
-
-      </div>
-    </div>
-  </div>
-
 </div>
 
-<!-- Libraries (loaded from CDN, no build step needed) -->
+<!-- ============ MODAL: PAST RECEIPTS ============ -->
+<div id="pastReceiptsModal" class="modal" style="display:none;">
+  <div class="modal-backdrop" data-close></div>
+  <div class="modal-card modal-card-wide">
+    <div class="modal-head">
+      <h2>Past receipts</h2>
+      <button class="modal-close" data-close>×</button>
+    </div>
+    <div class="modal-body">
+      <input type="search" id="receiptsSearch" class="search-input" placeholder="Search by parent, child, or receipt number...">
+      <div id="receiptsList" class="receipts-list">
+        <p class="empty-hint">Loading...</p>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ LOADING OVERLAY ============ -->
+<div id="loadingOverlay" class="loading-overlay" style="display:none;">
+  <div class="spinner"></div>
+  <p id="loadingText">Loading...</p>
+</div>
+
+<!-- ============ SCRIPTS ============ -->
+<!-- PDF libraries (plain scripts) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Config: edit your bank details and Firebase config here -->
 <script src="config.js"></script>
-<script src="app.js"></script>
+<!-- App: uses Firebase modular SDK from gstatic CDN -->
+<script type="module" src="app.js"></script>
 
 </body>
 </html>
