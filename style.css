@@ -106,6 +106,15 @@ html, body {
   border-color: #185fa5;
   box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
 }
+.form-field input[readonly] {
+  background: #f5f4ef;
+  color: #6b6b6b;
+  cursor: not-allowed;
+}
+.form-field input[readonly]:focus {
+  border-color: #e0ddd4;
+  box-shadow: none;
+}
 
 /* Line item rows */
 .item-row {
@@ -115,14 +124,29 @@ html, body {
   margin-bottom: 8px;
   align-items: center;
 }
-.item-row input {
+.item-row input,
+.item-row select {
   padding: 8px 10px;
   font-size: 13px;
+  font-family: inherit;
   border: 1px solid #e0ddd4;
   border-radius: 6px;
   background: #ffffff;
+  color: #1a1a1a;
+  width: 100%;
 }
-.item-row input:focus {
+.item-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6' fill='none'%3e%3cpath d='M1 1l4 4 4-4' stroke='%236b6b6b' stroke-width='1.5' stroke-linecap='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+  padding-right: 28px;
+  cursor: pointer;
+}
+.item-row input:focus,
+.item-row select:focus {
   outline: none;
   border-color: #185fa5;
   box-shadow: 0 0 0 3px rgba(24, 95, 165, 0.1);
@@ -237,13 +261,27 @@ html, body {
   color: #1a1a1a;
 }
 
-/* Header */
+/* Top centered title */
+.r-title-bar {
+  text-align: center;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid #1a1a1a;
+}
+.r-title {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+/* Header sits below the title */
 .r-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 22px;
+  margin-bottom: 22px;
+  border-bottom: 0.5px solid #e5e3da;
 }
 .r-brand { display: flex; align-items: center; gap: 14px; }
 .r-logo {
@@ -282,18 +320,6 @@ html, body {
 }
 .r-meta-row { margin-bottom: 3px; }
 .r-meta strong { color: #1a1a1a; font-weight: 600; }
-
-/* Centered "Fee receipt" title bar */
-.r-title-bar {
-  text-align: center;
-  margin: 24px 0 22px;
-}
-.r-title {
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
-  text-transform: capitalize;
-}
 
 /* Recipient cards */
 .r-recipient-row {
