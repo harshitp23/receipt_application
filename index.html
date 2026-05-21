@@ -56,8 +56,11 @@
       </div>
 
       <div class="form-field">
-        <label for="childName">Child's name</label>
-        <input type="text" id="childName" placeholder="Auto-filled when parent selected" readonly>
+        <div class="field-label-row">
+          <label for="childName">Child's name</label>
+          <button type="button" class="btn-link btn-link-sm" id="updateParentRecordBtn" style="display:none;">Save change to parent record</button>
+        </div>
+        <input type="text" id="childName" placeholder="Auto-filled when parent selected">
       </div>
     </div>
 
