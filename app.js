@@ -36,39 +36,73 @@ $("bankIFSC").textContent    = BANK_DETAILS.ifsc;
 $("bankPAN").textContent     = BANK_DETAILS.pan;
 $("bankAddress").textContent = BANK_DETAILS.address;
 
-// Set today's date by default
-function setTodayDate() {
+// Default date = 1st of the current month
+function firstOfThisMonth() {
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  receiptDate.value = `${yyyy}-${mm}-${dd}`;
+  return `${yyyy}-${mm}-01`;
 }
-setTodayDate();
+function setDefaultDate() {
+  receiptDate.value = firstOfThisMonth();
+}
+setDefaultDate();
 
-// Generate a random receipt number: PREFIX + N-digit random integer
-function nextReceiptNumber() {
-  const digits = RECEIPT_RANDOM_DIGITS || 4;
-  const min = Math.pow(10, digits - 1);            // e.g. 1000
-  const max = Math.pow(10, digits) - 1;            // e.g. 9999
-  const n = Math.floor(Math.random() * (max - min + 1)) + min;
-  return RECEIPT_PREFIX + n;
+// Receipt number: YYYY-MM-NNN, resets every month, increments per receipt
+// Counter is stored per-month in localStorage so it survives reloads.
+function buildReceiptNumber(isoDate, counter) {
+  const [y, m] = isoDate.split("-");
+  return `${y}-${m}-${String(counter).padStart(3, '0')}`;
 }
-receiptNo.value = nextReceiptNumber();
+function getCounterForMonth(isoDate) {
+  const [y, m] = isoDate.split("-");
+  const key = `ourkids_counter_${y}_${m}`;
+  const saved = localStorage.getItem(key);
+  return saved ? parseInt(saved, 10) : 1;
+}
+function bumpCounterForMonth(isoDate) {
+  const [y, m] = isoDate.split("-");
+  const key = `ourkids_counter_${y}_${m}`;
+  const next = getCounterForMonth(isoDate) + 1;
+  localStorage.setItem(key, String(next));
+}
+function refreshReceiptNumber() {
+  const date = receiptDate.value || firstOfThisMonth();
+  const counter = getCounterForMonth(date);
+  receiptNo.value = buildReceiptNumber(date, counter);
+}
+refreshReceiptNumber();
 
 // ============================================================
 //  LINE ITEMS
 // ============================================================
 
-function createItemRow(desc = "", amount = "") {
+// Fee categories shown in the description dropdown
+const FEE_CATEGORIES = [
+  "Registration Fee",
+  "Daycare Fee",
+  "Preschool Fee",
+  "Summer Camp Fee",
+  "Activity Fee"
+];
+
+function createItemRow(category = "", amount = "") {
   const row = document.createElement("div");
   row.className = "item-row";
+
+  const options = FEE_CATEGORIES.map(c =>
+    `<option value="${escapeHtml(c)}"${c === category ? " selected" : ""}>${escapeHtml(c)}</option>`
+  ).join("");
+
   row.innerHTML = `
-    <input type="text" class="item-desc" placeholder="Description" value="${escapeHtml(desc)}">
+    <select class="item-desc">
+      <option value="" disabled${category ? "" : " selected"}>Select fee type</option>
+      ${options}
+    </select>
     <input type="number" class="item-amount" placeholder="Amount" min="0" step="1" value="${escapeHtml(amount)}">
     <button type="button" class="remove-btn" title="Remove">×</button>
   `;
-  row.querySelector(".item-desc").addEventListener("input", updatePreview);
+  row.querySelector(".item-desc").addEventListener("change", updatePreview);
   row.querySelector(".item-amount").addEventListener("input", updatePreview);
   row.querySelector(".remove-btn").addEventListener("click", () => {
     row.remove();
@@ -83,9 +117,9 @@ addItemBtn.addEventListener("click", () => {
   updatePreview();
 });
 
-// Start with two default rows (matching the example receipt structure)
-createItemRow("Daycare fee for the month of ", "");
-createItemRow("Registration fee", "");
+// Start with two default rows
+createItemRow("Daycare Fee", "");
+createItemRow("Registration Fee", "");
 
 // ============================================================
 //  PREVIEW UPDATE
@@ -93,9 +127,23 @@ createItemRow("Registration fee", "");
 
 function getItems() {
   return Array.from(itemsContainer.querySelectorAll(".item-row")).map(row => ({
-    desc: row.querySelector(".item-desc").value.trim(),
+    category: row.querySelector(".item-desc").value.trim(),
     amount: parseFloat(row.querySelector(".item-amount").value) || 0
   }));
+}
+
+// Some categories read better with the receipt's month/year appended
+// e.g. "Daycare Fee" => "Daycare Fee for May 2026"
+function expandDescription(category, isoDate) {
+  if (!category) return "";
+  const monthly = ["Daycare Fee", "Preschool Fee", "Activity Fee"];
+  if (monthly.includes(category) && isoDate) {
+    const [y, m] = isoDate.split("-");
+    const months = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+    return `${category} for ${months[parseInt(m,10)-1]} ${y}`;
+  }
+  return category;
 }
 
 function formatDate(isoDate) {
@@ -120,10 +168,11 @@ function updatePreview() {
   rItemsBody.innerHTML = "";
   let total = 0;
   items.forEach((item, i) => {
+    const fullDesc = expandDescription(item.category, receiptDate.value);
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td class="sno">${i + 1}</td>
-      <td>${escapeHtml(item.desc) || "<span style='color:#bbb'>—</span>"}</td>
+      <td>${escapeHtml(fullDesc) || "<span style='color:#bbb'>—</span>"}</td>
       <td class="amt">${item.amount ? formatINR(item.amount) : ""}</td>
     `;
     rItemsBody.appendChild(tr);
@@ -137,9 +186,12 @@ function updatePreview() {
 }
 
 // Bind form inputs
-[parentName, childName, receiptNo, receiptDate].forEach(el => {
+[parentName, childName].forEach(el => {
   el.addEventListener("input", updatePreview);
-  el.addEventListener("change", updatePreview);
+});
+receiptDate.addEventListener("change", () => {
+  refreshReceiptNumber();
+  updatePreview();
 });
 
 updatePreview();
@@ -211,9 +263,9 @@ downloadBtn.addEventListener("click", async () => {
     alert("Please fill in the parent and child names.");
     return;
   }
-  const items = getItems().filter(i => i.desc && i.amount > 0);
+  const items = getItems().filter(i => i.category && i.amount > 0);
   if (items.length === 0) {
-    alert("Please add at least one line item with description and amount.");
+    alert("Please add at least one line item with a fee type and amount.");
     return;
   }
 
@@ -275,8 +327,9 @@ downloadBtn.addEventListener("click", async () => {
     const filename = `Receipt_${receiptNo.value || "OurKids"}_${childName.value.trim().replace(/\s+/g, "_")}.pdf`;
     pdf.save(filename);
 
-    // Generate a fresh random receipt number for the next one
-    receiptNo.value = nextReceiptNumber();
+    // Bump per-month counter so the next receipt advances by 1
+    bumpCounterForMonth(receiptDate.value);
+    refreshReceiptNumber();
     updatePreview();
   } catch (err) {
     console.error(err);
@@ -294,10 +347,10 @@ resetBtn.addEventListener("click", () => {
   if (!confirm("Clear all fields?")) return;
   parentName.value = "";
   childName.value = "";
-  setTodayDate();
-  receiptNo.value = nextReceiptNumber();
+  setDefaultDate();
+  refreshReceiptNumber();
   itemsContainer.innerHTML = "";
-  createItemRow("Daycare fee for the month of ", "");
-  createItemRow("Registration fee", "");
+  createItemRow("Daycare Fee", "");
+  createItemRow("Registration Fee", "");
   updatePreview();
 });
