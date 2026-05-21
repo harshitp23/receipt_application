@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OurKids · Receipt Generator</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ FORM PANEL ============ -->
+  <div class="form-panel">
+    <div class="form-header">
+      <h1>Receipt Generator</h1>
+      <p>Fill in the details below — the preview updates live.</p>
+    </div>
+
+    <div class="form-section">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="receiptNo">Receipt no.</label>
+          <input type="text" id="receiptNo" value="2026-5013">
+        </div>
+        <div class="form-field">
+          <label for="receiptDate">Date</label>
+          <input type="date" id="receiptDate">
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label for="parentName">Parent / received from</label>
+        <input type="text" id="parentName" placeholder="e.g. Rakesh R S">
+      </div>
+
+      <div class="form-field">
+        <label for="childName">Child's name</label>
+        <input type="text" id="childName" placeholder="e.g. Dhrithi Rakesh">
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-head">
+        <h2>Line items</h2>
+        <button type="button" class="btn-link" id="addItemBtn">+ Add item</button>
+      </div>
+      <div id="itemsContainer"></div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-primary" id="downloadBtn">
+        <span class="btn-label">Download PDF</span>
+      </button>
+      <button type="button" class="btn-secondary" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <!-- ============ PREVIEW PANEL ============ -->
+  <div class="preview-panel">
+    <div class="preview-toolbar">
+      <span class="preview-label">Live preview</span>
+    </div>
+
+    <div class="preview-scroll">
+      <!-- This is the actual receipt that gets rendered to PDF -->
+      <div id="receipt" class="receipt">
+
+        <div class="r-header">
+          <div class="r-brand">
+            <div class="r-logo">
+              <img src="assets/logo.png" alt="OurKids logo" id="brandLogo" onerror="this.style.display='none'">
+            </div>
+            <div>
+              <div class="r-brand-name">OurKids</div>
+              <div class="r-brand-tag">DAYCARE · PRESCHOOL · ACTIVITY CLUB</div>
+            </div>
+          </div>
+          <div class="r-meta">
+            <div class="r-meta-row">Receipt no. <strong id="rReceiptNo">2026-5013</strong></div>
+            <div class="r-meta-row">Date <strong id="rReceiptDate">1 May 2026</strong></div>
+          </div>
+        </div>
+
+        <div class="r-title-bar">
+          <div class="r-title">Fee receipt</div>
+        </div>
+
+        <div class="r-recipient-row">
+          <div class="r-card">
+            <div class="r-label">Received from</div>
+            <div class="r-value" id="rParentName">—</div>
+          </div>
+          <div class="r-card">
+            <div class="r-label">Child's name</div>
+            <div class="r-value" id="rChildName">—</div>
+          </div>
+        </div>
+
+        <table class="r-items">
+          <thead>
+            <tr>
+              <th class="sno">#</th>
+              <th>Description</th>
+              <th class="amt">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="rItemsBody"></tbody>
+          <tfoot>
+            <tr class="r-total">
+              <td colspan="2" class="lbl">Total</td>
+              <td class="val" id="rTotal">₹ 0</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="r-words">
+          <strong>Amount in words:</strong> <span id="rWords">—</span>
+        </div>
+
+        <div class="r-footer">
+          <div class="r-footer-left">
+            <div class="r-footer-label">Bank details for payment</div>
+            <table class="r-bank">
+              <tr><td class="k">Bank</td><td id="bankName">—</td></tr>
+              <tr><td class="k">Account holder</td><td id="bankHolder">—</td></tr>
+              <tr><td class="k">A/c no.</td><td id="bankAccount">—</td></tr>
+              <tr><td class="k">IFSC</td><td id="bankIFSC">—</td></tr>
+              <tr><td class="k">PAN</td><td id="bankPAN">—</td></tr>
+              <tr><td class="k" style="vertical-align: top;">Address</td><td id="bankAddress">—</td></tr>
+            </table>
+          </div>
+
+          <div class="r-footer-right">
+            <div class="r-sig-for">For OurKids Preschool &amp; Daycare</div>
+            <div class="r-sig-visual">
+              <img src="assets/stamp.png" alt="Stamp" class="r-stamp-img" id="stampImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
+              <img src="assets/signature.png" alt="Signature" class="r-signature-img" id="signatureImg" onerror="this.style.opacity='0';this.style.border='1px dashed #ccc'">
+            </div>
+            <div class="r-sig-line">Authorized signatory</div>
+          </div>
+        </div>
+
+        <div class="r-footnote">
+          This is a computer-generated receipt · Thank you for choosing OurKids
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Libraries (loaded from CDN, no build step needed) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
