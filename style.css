@@ -161,6 +161,19 @@ html, body {
   letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.field-label-row label { margin-bottom: 0; }
+.btn-link-sm {
+  font-size: 11px;
+  padding: 2px 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .form-field input,
 .form-field select,
 .form-field textarea {
