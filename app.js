@@ -19,7 +19,6 @@ import {
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(firebaseApp);
 
-// Firestore with offline persistence (works without internet)
 let db;
 try {
   db = initializeFirestore(firebaseApp, {
@@ -32,7 +31,6 @@ try {
 
 const provider = new GoogleAuthProvider();
 
-// ---- DOM refs ----
 const $ = (id) => document.getElementById(id);
 
 const authGate    = $("authGate");
@@ -81,10 +79,9 @@ const loadingText    = $("loadingText");
 //  STATE
 // ============================================================
 let currentUser = null;
-let parentsCache = [];      // [{id, parentName, childName}]
-let receiptsCache = [];     // [{id, ...receiptData}]
-let editingReceiptId = null; // null = creating new, string = editing existing
-
+let parentsCache = [];   
+let receiptsCache = [];   
+let editingReceiptId = null; 
 const FEE_CATEGORIES = [
   "Registration Fee",
   "Daycare Fee",
@@ -167,9 +164,8 @@ function setDefaultDate() {
   receiptDate.value = firstOfThisMonth();
 }
 
-// Build the next receipt number by querying the highest existing one for that month
 async function refreshReceiptNumber() {
-  if (editingReceiptId) return; // don't change the number while editing
+  if (editingReceiptId) return; 
 
   const date = receiptDate.value || firstOfThisMonth();
   const [y, m] = date.split("-");
@@ -177,21 +173,30 @@ async function refreshReceiptNumber() {
 
   try {
     const ref = collection(db, "receipts");
-    const q = query(
-      ref,
-      where("receiptNo", ">=", prefix),
-      where("receiptNo", "<", prefix + "\uffff"),
-      orderBy("receiptNo", "desc"),
-      limit(1)
-    );
+    const q = query(ref, orderBy("counter", "desc"), limit(1));
     const snap = await getDocs(q);
 
     let nextNum = 1;
     if (!snap.empty) {
-      const last = snap.docs[0].data().receiptNo; // e.g. "2026-05-007"
-      const lastNum = parseInt(last.split("-")[2], 10);
-      nextNum = lastNum + 1;
+      const lastCounter = snap.docs[0].data().counter;
+      if (typeof lastCounter === "number") {
+        nextNum = lastCounter + 1;
+      } else {
+        const lastRcptNo = snap.docs[0].data().receiptNo || "";
+        const parsed = parseInt(lastRcptNo.split("-").pop(), 10);
+        if (!isNaN(parsed)) nextNum = parsed + 1;
+      }
     }
+
+    const allSnap = await getDocs(query(ref, orderBy("receiptNo", "desc"), limit(50)));
+    for (const d of allSnap.docs) {
+      const rn = d.data().receiptNo || "";
+      const parsed = parseInt(rn.split("-").pop(), 10);
+      if (!isNaN(parsed) && parsed >= nextNum) {
+        nextNum = parsed + 1;
+      }
+    }
+
     receiptNo.value = prefix + String(nextNum).padStart(3, "0");
   } catch (err) {
     console.error("Failed to get next receipt number:", err);
@@ -235,7 +240,43 @@ parentSelect.addEventListener("change", () => {
   if (parent) {
     childName.value = parent.childName;
   }
+  refreshUpdateParentBtn();
   updatePreview();
+});
+
+const updateParentRecordBtn = $("updateParentRecordBtn");
+function refreshUpdateParentBtn() {
+  const parent = parentsCache.find(p => p.id === parentSelect.value);
+  const typed = childName.value.trim();
+  const shouldShow = parent && typed && typed !== parent.childName;
+  updateParentRecordBtn.style.display = shouldShow ? "inline-block" : "none";
+}
+
+childName.addEventListener("input", () => {
+  refreshUpdateParentBtn();
+  updatePreview();
+});
+
+updateParentRecordBtn.addEventListener("click", async () => {
+  const parent = parentsCache.find(p => p.id === parentSelect.value);
+  if (!parent) return;
+  const newName = childName.value.trim();
+  if (!newName) return;
+  if (!confirm(`Update ${parent.parentName}'s child name from "${parent.childName}" to "${newName}" in the database?`)) return;
+
+  updateParentRecordBtn.disabled = true;
+  updateParentRecordBtn.textContent = "Saving...";
+  try {
+    await setDoc(doc(db, "parents", parent.id), { childName: newName }, { merge: true });
+    parent.childName = newName;
+    refreshUpdateParentBtn();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to update: " + err.message);
+  } finally {
+    updateParentRecordBtn.disabled = false;
+    updateParentRecordBtn.textContent = "Save change to parent record";
+  }
 });
 
 // ============================================================
@@ -459,16 +500,18 @@ async function saveReceiptToFirestore() {
   const total = items.reduce((s, i) => s + i.amount, 0);
 
   const [y, m] = receiptDate.value.split("-");
+  const counterFromRcptNo = parseInt(receiptNo.value.split("-").pop(), 10);
 
   const data = {
     receiptNo:  receiptNo.value,
+    counter:    isNaN(counterFromRcptNo) ? null : counterFromRcptNo,
     year:       parseInt(y, 10),
     month:      parseInt(m, 10),
     date:       receiptDate.value,
     parentId:   parent.id,
     parentName: parent.parentName,
-    childName:  parent.childName,
-    items:      items, // [{category, amount}]
+    childName:  childName.value.trim() || parent.childName,
+    items:      items,
     total:      total,
     updatedAt:  serverTimestamp()
   };
@@ -502,11 +545,9 @@ downloadBtn.addEventListener("click", async () => {
   labelEl.textContent = "Generating...";
 
   try {
-    // Save first
     labelEl.textContent = editingReceiptId ? "Saving changes..." : "Saving receipt...";
     await saveReceiptToFirestore();
 
-    // Then PDF
     labelEl.textContent = "Generating PDF...";
     const receiptEl = $("receipt");
     const originalTransform = receiptEl.style.transform;
@@ -541,15 +582,14 @@ downloadBtn.addEventListener("click", async () => {
         if (remaining > 0) pdf.addPage();
       }
     }
-    const filename = `Receipt_${receiptNo.value}_${parent.childName.replace(/\s+/g, "_")}.pdf`;
+    const filenameChild = (childName.value.trim() || parent.childName).replace(/\s+/g, "_");
+    const filename = `Receipt_${receiptNo.value}_${filenameChild}.pdf`;
     pdf.save(filename);
 
-    // If this was a new receipt, generate next number for the next one
     if (!editingReceiptId) {
       await refreshReceiptNumber();
       updatePreview();
     } else {
-      // Editing complete — exit edit mode
       exitEditMode();
     }
   } catch (err) {
@@ -580,6 +620,7 @@ async function startNewReceipt() {
   exitEditMode();
   parentSelect.value = "";
   childName.value = "";
+  refreshUpdateParentBtn();
   setDefaultDate();
   await refreshReceiptNumber();
   itemsContainer.innerHTML = "";
@@ -688,7 +729,6 @@ function openReceipt(id) {
   const r = receiptsCache.find(x => x.id === id);
   if (!r) return;
 
-  // Make sure the parent still exists in cache; if not, add a transient entry
   let parent = parentsCache.find(p => p.id === r.parentId);
   if (!parent) {
     parent = { id: r.parentId || "missing_" + id, parentName: r.parentName, childName: r.childName };
@@ -701,8 +741,8 @@ function openReceipt(id) {
   receiptNo.value = r.receiptNo;
   renderParentDropdown(parent.id);
   childName.value = r.childName;
+  refreshUpdateParentBtn();
 
-  // Rebuild line items
   itemsContainer.innerHTML = "";
   itemsEmpty.style.display = "none";
   for (const item of (r.items || [])) {
