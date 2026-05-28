@@ -19,5 +19,6 @@ const FIREBASE_CONFIG = {
 
 const ALLOWED_EMAILS = [
   "harshitprithiani@gmail.com",
-  "rheaprithiani@gmail.com"
+  "rheaprithiani@gmail.com",
+  "kamalpri@gmail.com"
 ];
